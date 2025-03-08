@@ -1,0 +1,528 @@
+<!DOCTYPE html> 
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Grupos de Investigación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.10.5/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-100 min-h-screen" x-data="app()">
+    <nav class="bg-blue-800 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Grupos de Investigación Facultad</h1>
+            <div>
+                <button @click="goHome()" class="px-3 py-2 rounded hover:bg-blue-700 transition">Inicio</button>
+                <button @click="currentPage = 'registerTeacher'" class="px-3 py-2 rounded hover:bg-blue-700 transition">Registrar Docente</button>
+                <button @click="currentPage = 'linkStudent'" class="px-3 py-2 rounded hover:bg-blue-700 transition">Vincular Estudiante</button>
+                <button @click="currentPage = 'createActivity'" class="px-3 py-2 rounded hover:bg-blue-700 transition">Crear Actividad</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Página de Inicio -->
+    <div x-show="currentPage === 'home'" class="container mx-auto p-6">
+        <div x-show="!selectedGroup">
+            <h2 class="text-3xl font-bold mb-6 text-blue-800">Grupos de Investigación</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <template x-for="group in researchGroups" :key="group.id">
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer" @click="selectGroup(group.id)">
+                        <div class="bg-blue-700 text-white p-4">
+                            <h3 class="text-xl font-bold" x-text="group.name"></h3>
+                        </div>
+                        <div class="p-4">
+                            <p class="text-gray-600 mb-2"><span class="font-semibold">Director:</span> <span x-text="group.director"></span></p>
+                            <p class="text-gray-600"><span class="font-semibold">Investigadores:</span> <span x-text="group.researchers.length"></span></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div x-show="selectedGroup" class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-blue-800" x-text="getSelectedGroup().name"></h2>
+                <button @click="goHome()" class="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 transition">Volver</button>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2 text-blue-700">Objetivos</h3>
+                <p class="text-gray-700" x-text="getSelectedGroup().objectives"></p>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2 text-blue-700">Visión</h3>
+                <p class="text-gray-700" x-text="getSelectedGroup().vision"></p>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2 text-blue-700">Líneas de Investigación</h3>
+                <ul class="list-disc pl-5 text-gray-700">
+                    <template x-for="line in getSelectedGroup().researchLines" :key="line">
+                        <li x-text="line"></li>
+                    </template>
+                </ul>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2 text-blue-700">Director</h3>
+                <p class="text-gray-700" x-text="getSelectedGroup().director"></p>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2 text-blue-700">Docentes Investigadores</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-blue-100">
+                            <tr>
+                                <th class="p-3 text-left">Nombre</th>
+                                <th class="p-3 text-left">Formación Académica</th>
+                                <th class="p-3 text-left">Horario de Atención</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="researcher in getSelectedGroup().researchers" :key="researcher.id">
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="p-3" x-text="researcher.name"></td>
+                                    <td class="p-3" x-text="researcher.education"></td>
+                                    <td class="p-3" x-text="researcher.schedule"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="getSelectedGroup().researchers.length === 0">
+                                <td colspan="3" class="p-3 text-center text-gray-500">No hay docentes registrados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Semilleros (para ambos grupos) -->
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2 text-blue-700">Semilleros</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <template x-for="seedbed in getSeedbedsByGroup(selectedGroup)" :key="seedbed.id">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h4 class="text-lg font-bold mb-2" x-text="seedbed.name"></h4>
+                            <p class="text-sm text-gray-600 mb-3">Estudiantes: <span x-text="seedbed.students.length"></span></p>
+                            
+                            <h5 class="font-bold text-sm mb-2">Estudiantes Vinculados:</h5>
+                            <ul class="list-disc pl-5 mb-4">
+                                <template x-for="student in seedbed.students" :key="student.id">
+                                    <li>
+                                        <span x-text="student.name"></span> (<span x-text="student.code"></span>) - <span x-text="student.career"></span>
+                                    </li>
+                                </template>
+                                <li x-show="seedbed.students.length === 0" class="text-gray-500">No hay estudiantes vinculados</li>
+                            </ul>
+                            
+                            <h5 class="font-bold text-sm mb-2">Actividades:</h5>
+                            <ul class="space-y-2">
+                                <template x-for="activity in getActivitiesBySeedbed(seedbed.id)" :key="activity.id">
+                                    <li class="bg-white p-3 rounded shadow-sm">
+                                        <div class="font-bold" x-text="activity.name"></div>
+                                        <div class="text-sm">
+                                            <span x-text="formatDate(activity.date)"></span> a las <span x-text="activity.time"></span>
+                                        </div>
+                                        <div class="text-sm text-gray-600" x-text="activity.summary"></div>
+                                        <div class="text-xs text-gray-500 mt-1">Límite: <span x-text="activity.limit"></span> asistentes</div>
+                                    </li>
+                                </template>
+                                <li x-show="getActivitiesBySeedbed(seedbed.id).length === 0" class="text-gray-500 text-sm">No hay actividades programadas</li>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de Registro de Docente -->
+    <div x-show="currentPage === 'registerTeacher'" class="container mx-auto p-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-3xl font-bold mb-6 text-blue-800">Registrar Docente Investigador</h2>
+            
+            <form @submit.prevent="registerTeacher">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="teacherName">Nombre completo</label>
+                        <input type="text" id="teacherName" x-model="newTeacher.name" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="teacherEducation">Formación académica</label>
+                        <input type="text" id="teacherEducation" x-model="newTeacher.education" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="teacherSchedule">Horario de atención</label>
+                        <input type="text" id="teacherSchedule" x-model="newTeacher.schedule" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Lunes a Viernes 10:00 - 12:00" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="teacherGroup">Grupo de investigación</label>
+                        <select id="teacherGroup" x-model="newTeacher.groupId" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="" disabled selected>Seleccione un grupo</option>
+                            <template x-for="group in researchGroups" :key="group.id">
+                                <option :value="group.id" x-text="group.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <button type="submit" class="bg-blue-700 text-white px-6 py-3 rounded font-bold hover:bg-blue-800 transition">Registrar Docente</button>
+                </div>
+            </form>
+            
+            <div x-show="teacherRegistrationSuccess" class="mt-4 p-3 bg-green-100 text-green-700 rounded">
+                Docente registrado exitosamente.
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de Vinculación de Estudiantes -->
+    <div x-show="currentPage === 'linkStudent'" class="container mx-auto p-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-3xl font-bold mb-6 text-blue-800">Vincular Estudiante a Semillero</h2>
+            
+            <form @submit.prevent="linkStudent">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="studentName">Nombre del estudiante</label>
+                        <input type="text" id="studentName" x-model="newStudent.name" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="studentCode">Código del estudiante</label>
+                        <input type="text" id="studentCode" x-model="newStudent.code" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="studentCareer">Carrera del estudiante</label>
+                        <input type="text" id="studentCareer" x-model="newStudent.career" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="studentSeedbed">Semillero</label>
+                        <select id="studentSeedbed" x-model="newStudent.seedbedId" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="" disabled selected>Seleccione un semillero</option>
+                            <template x-for="seedbed in seedbeds" :key="seedbed.id">
+                                <option :value="seedbed.id" x-text="seedbed.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <button type="submit" class="bg-blue-700 text-white px-6 py-3 rounded font-bold hover:bg-blue-800 transition">Vincular Estudiante</button>
+                </div>
+            </form>
+            
+            <div x-show="studentLinkSuccess" class="mt-4 p-3 bg-green-100 text-green-700 rounded">
+                Estudiante vinculado exitosamente al semillero.
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de Creación de Actividades -->
+    <div x-show="currentPage === 'createActivity'" class="container mx-auto p-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-3xl font-bold mb-6 text-blue-800">Crear Actividad para Semillero</h2>
+            
+            <form @submit.prevent="createActivity">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="activityName">Nombre de la actividad</label>
+                        <input type="text" id="activityName" x-model="newActivity.name" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="activitySeedbed">Semillero</label>
+                        <select id="activitySeedbed" x-model="newActivity.seedbedId" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="" disabled selected>Seleccione un semillero</option>
+                            <template x-for="seedbed in seedbeds" :key="seedbed.id">
+                                <option :value="seedbed.id" x-text="seedbed.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="activityDate">Fecha</label>
+                        <input type="date" id="activityDate" x-model="newActivity.date" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="activityTime">Hora</label>
+                        <input type="time" id="activityTime" x-model="newActivity.time" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="activityLimit">Límite de asistentes</label>
+                        <input type="number" id="activityLimit" x-model="newActivity.limit" min="1" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 mb-2" for="activitySummary">Resumen de la actividad</label>
+                        <textarea id="activitySummary" x-model="newActivity.summary" rows="4" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <button type="submit" class="bg-blue-700 text-white px-6 py-3 rounded font-bold hover:bg-blue-800 transition">Crear Actividad</button>
+                </div>
+            </form>
+            
+            <div x-show="activityCreationSuccess" class="mt-4 p-3 bg-green-100 text-green-700 rounded">
+                Actividad creada exitosamente.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                currentPage: 'home',
+                selectedGroup: null,
+                
+                // Datos iniciales actualizados con la información del documento
+                researchGroups: [
+                    {
+                        id: 'comba',
+                        name: 'COMBA I+D',
+                        director: 'Dra. Claudia Liliana Zuñiga Cañon',
+                        objectives: 'Formar y seleccionar talento humano con las competencias laborales y técnicas requeridas para I+D+I de calidad en las lineas de investigación del grupo. Fortalecer la relación del grupo de investigación en la cuadruple helice Universidad-Empresa-Estado-Sociedad logrando la transferencia directa e indirecta de los productos resultado de las actividades de I+D+i. Realizar proyectos de I+D+i con impacto social de acuerdo con las lineas de investigación planteadas. Visibilizar el grupo de investigación en el contexto nacional e internacional. Lograr la sostenibilidad financiera del grupo mediante la cofinanciación de proyectos de I+D+i. Mejorar los procesos administrativos misionales del grupo.',
+                        vision: 'Convertirse en un grupo de investigación en computación ubicua de reconocimiento y prestigio en América Latina por su contribución en proyectos de I+D+i con carácter social, a la vez posicionarse como un grupo importante en Colombia en la investigación y desarrollo en Arquitecturas de TI para las personas, grupos y organizaciones.',
+                        researchLines: [
+                            'Arquitectura de Tecnología Informática',
+                            'Computación Ubicua, Urbana y Móvil',
+                            'Desarrollo de Sistemas Informáticos',
+                            'Redes Inalámbricas para la Inclusión Digital y el Desarrollo Económico'
+                        ],
+                        researchers: [
+                            { id: 1, name: 'Dra. María López', education: 'PhD. en Ciencias de la Computación', schedule: 'Lunes a Miércoles 14:00 - 16:00' },
+                            { id: 2, name: 'Dr. Juan Pérez', education: 'PhD. en Inteligencia Artificial', schedule: 'Martes y Jueves 10:00 - 12:00' }
+                        ]
+                    },
+                    {
+                        id: 'gieiam',
+                        name: 'GIEIAM',
+                        director: 'Dra. Diana Paola Bernal Suárez',
+                        objectives: 'Participar activamente en convocatorias internas y externas para la financiación de los proyectos de investigación fomentando el vínculo de cooperación con grupos nacionales e internacionales y la participación en redes científicas. Realizar investigación aplicada y proyectos de desarrollo tecnológico en ingeniería que propendan por el desarrollo tecnológico, económico, ambiental y social del país y la región. Fortalecer los vínculos entre la universidad y la empresa mediante el desarrollo de proyectos de investigación aplicada orientados al mejoramiento de los procesos desde el punto de vista tecnológico, ambiental y social. Generar conocimiento mediante la publicación de artículos científicos que evidencien los desarrollos generados en el grupo y resultados derivados del trabajo investigativo.',
+                        vision: 'Consolidarnos en el próximo quinquenio como un grupo líder en el ámbito nacional en materia de investigación aplicada en ingeniería y desarrollo tecnológico.',
+                        researchLines: [
+                            'Gestión y Control de la Contaminación Ambiental',
+                            'Instrumentación, automatización y sistemas inteligentes',
+                            'Logística, operaciones, productividad y gestión de proyectos'
+                        ],
+                        researchers: [
+                            { id: 3, name: 'Dr. Roberto Gómez', education: 'PhD. en Sistemas Inteligentes', schedule: 'Miércoles y Viernes 15:00 - 17:00' }
+                        ]
+                    }
+                ],
+                
+                seedbeds: [
+                    { 
+                        id: 'comba-seedbed', 
+                        name: 'Semillero Comba',
+                        groupId: 'comba',
+                        students: [
+                            { id: 1, name: 'Ana García', code: '20210103', career: 'Ingeniería de Sistemas' }
+                        ] 
+                    },
+                    { 
+                        id: 'informa-seedbed', 
+                        name: 'Semillero Informa',
+                        groupId: 'comba', 
+                        students: [] 
+                    },
+                    { 
+                        id: 'gieiam-seedbed', 
+                        name: 'Semillero GIEIAM',
+                        groupId: 'gieiam', 
+                        students: [] 
+                    },
+                    { 
+                        id: 'robotic-seedbed', 
+                        name: 'Semillero Robótica',
+                        groupId: 'gieiam', 
+                        students: [] 
+                    }
+                ],
+                
+                activities: [
+                    { 
+                        id: 1, 
+                        name: 'Taller de Machine Learning', 
+                        seedbedId: 'comba-seedbed',
+                        date: '2025-03-15',
+                        time: '15:00',
+                        limit: 20,
+                        summary: 'Introducción a los conceptos básicos de aprendizaje automático con ejemplos prácticos.'
+                    }
+                ],
+                
+                // Formularios
+                newTeacher: {
+                    name: '',
+                    education: '',
+                    schedule: '',
+                    groupId: ''
+                },
+                
+                newStudent: {
+                    name: '',
+                    code: '',
+                    career: '',
+                    seedbedId: ''
+                },
+                
+                newActivity: {
+                    name: '',
+                    seedbedId: '',
+                    date: '',
+                    time: '',
+                    limit: '',
+                    summary: ''
+                },
+                
+                // Banderas de éxito
+                teacherRegistrationSuccess: false,
+                studentLinkSuccess: false,
+                activityCreationSuccess: false,
+                
+                // Métodos
+                goHome() {
+                    this.currentPage = 'home';
+                    this.selectedGroup = null;
+                },
+                
+                selectGroup(groupId) {
+                    this.selectedGroup = groupId;
+                },
+                
+                getSelectedGroup() {
+                    return this.researchGroups.find(group => group.id === this.selectedGroup);
+                },
+                
+                getSeedbedsByGroup(groupId) {
+                    return this.seedbeds.filter(seedbed => seedbed.groupId === groupId);
+                },
+                
+                registerTeacher() {
+                    const groupIndex = this.researchGroups.findIndex(g => g.id === this.newTeacher.groupId);
+                    if (groupIndex === -1) return;
+                    
+                    const researchers = this.researchGroups[groupIndex].researchers;
+                    const id = this.getNextId(researchers);
+                    
+                    const newResearcher = {
+                        id: id,
+                        name: this.newTeacher.name,
+                        education: this.newTeacher.education,
+                        schedule: this.newTeacher.schedule
+                    };
+                    
+                    // Agregar el nuevo docente al grupo
+                    this.researchGroups[groupIndex].researchers.push(newResearcher);
+                    
+                    // Restablecer el formulario
+                    this.newTeacher = {
+                        name: '',
+                        education: '',
+                        schedule: '',
+                        groupId: ''
+                    };
+                    
+                    // Mostrar mensaje de éxito
+                    this.teacherRegistrationSuccess = true;
+                    setTimeout(() => {
+                        this.teacherRegistrationSuccess = false;
+                    }, 3000);
+                },
+                
+                linkStudent() {
+                    const seedbedIndex = this.seedbeds.findIndex(s => s.id === this.newStudent.seedbedId);
+                    if (seedbedIndex === -1) return;
+                    
+                    const students = this.seedbeds[seedbedIndex].students;
+                    const id = this.getNextId(students);
+                    
+                    const newStudent = {
+                        id: id,
+                        name: this.newStudent.name,
+                        code: this.newStudent.code,
+                        career: this.newStudent.career
+                    };
+                    
+                    // Agregar el nuevo estudiante al semillero
+                    this.seedbeds[seedbedIndex].students.push(newStudent);
+                    
+                    // Restablecer el formulario
+                    this.newStudent = {
+                        name: '',
+                        code: '',
+                        career: '',
+                        seedbedId: ''
+                    };
+                    
+                    // Mostrar mensaje de éxito
+                    this.studentLinkSuccess = true;
+                    setTimeout(() => {
+                        this.studentLinkSuccess = false;
+                    }, 3000);
+                },
+                
+                createActivity() {
+                    const id = this.getNextId(this.activities);
+                    const newActivity = {
+                        id: id,
+                        name: this.newActivity.name,
+                        seedbedId: this.newActivity.seedbedId,
+                        date: this.newActivity.date,
+                        time: this.newActivity.time,
+                        limit: this.newActivity.limit,
+                        summary: this.newActivity.summary
+                    };
+                    
+                    // Agregar la nueva actividad
+                    this.activities.push(newActivity);
+                    
+                    // Restablecer el formulario
+                    this.newActivity = {
+                        name: '',
+                        seedbedId: '',
+                        date: '',
+                        time: '',
+                        limit: '',
+                        summary: ''
+                    };
+                    
+                    // Mostrar mensaje de éxito
+                    this.activityCreationSuccess = true;
+                    setTimeout(() => {
+                        this.activityCreationSuccess = false;
+                    }, 3000);
+                },
+                
+                getActivitiesBySeedbed(seedbedId) {
+                    return this.activities.filter(activity => activity.seedbedId === seedbedId);
+                },
+                
+                getNextId(array) {
+                    if (array.length === 0) return 1;
+                    return Math.max(...array.map(item => item.id)) + 1;
+                },
+                
+                formatDate(dateString) {
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('es-ES', options);
+                }
+            };
+        }
+    </script>
+</body>
+</html>
+
+
+
